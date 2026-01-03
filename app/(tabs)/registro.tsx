@@ -577,28 +577,29 @@ export default function RegistroScreen() {
                     </View>
                 </Modal>
 
-                {/* Seção do Encerrante (MOVIDO PARA O TOPO) */}
+                {/* Seção do Encerrante (Destaque Principal) */}
                 <View className="px-4 mt-6">
-                    <Text className="text-lg font-bold text-gray-800 mb-1">📊 Encerrante</Text>
-                    <Text className="text-sm text-gray-500 mb-4">Valor total vendido (leitura da bomba)</Text>
-
                     <View
-                        className="flex-row items-center bg-white rounded-2xl border-2 border-purple-200 overflow-hidden"
-                        style={{ shadowColor: '#7c3aed', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 }}
+                        className="bg-indigo-600 rounded-[32px] p-6 shadow-xl"
+                        style={{ elevation: 8, shadowColor: '#4f46e5', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20 }}
                     >
-                        <View className="p-4 items-center justify-center bg-purple-50">
-                            <Gauge size={24} color="#7c3aed" />
+                        <View className="flex-row items-center gap-3 mb-4">
+                            <View className="w-10 h-10 bg-white/20 rounded-full items-center justify-center border border-white/30">
+                                <Gauge size={22} color="white" />
+                            </View>
+                            <View>
+                                <Text className="text-indigo-100 text-xs font-bold uppercase tracking-widest">Leitura da Bomba</Text>
+                                <Text className="text-white text-lg font-black">Encerrante Total</Text>
+                            </View>
                         </View>
-                        <View className="flex-1 px-4">
-                            <Text className="text-xs font-medium text-purple-600">
-                                Valor do Encerrante
-                            </Text>
+
+                        <View className="bg-white/10 rounded-2xl p-4 border border-white/20">
                             <View className="flex-row items-center">
-                                <Text className="text-lg font-medium mr-1 text-purple-600">R$</Text>
+                                <Text className="text-indigo-200 text-2xl font-bold mr-2">R$</Text>
                                 <TextInput
-                                    className="flex-1 text-xl font-bold py-2 text-purple-700"
+                                    className="flex-1 text-3xl font-black text-white py-1"
                                     placeholder="0,00"
-                                    placeholderTextColor="#c4b5fd"
+                                    placeholderTextColor="rgba(255,255,255,0.3)"
                                     value={registro.valorEncerrante}
                                     onChangeText={(text) => handleChange('valorEncerrante', text)}
                                     keyboardType="decimal-pad"
@@ -608,64 +609,182 @@ export default function RegistroScreen() {
                     </View>
                 </View>
 
-                {/* Seção de Valores */}
-                <View className="px-4 mt-6">
-                    <Text className="text-lg font-bold text-gray-800 mb-1">💰 Valores Recebidos</Text>
-                    <Text className="text-sm text-gray-500 mb-4">Informe os valores por forma de pagamento</Text>
+                {/* Seção de Valores (Grid 2x2) */}
+                <View className="px-4 mt-8">
+                    <Text className="text-xl font-black text-gray-800 mb-1">💰 Recebimentos</Text>
+                    <Text className="text-sm text-gray-500 mb-5">Toque nos campos para preencher os valores</Text>
 
-                    {/* Campos de Cartão - Débito e Crédito */}
-                    {renderInputField({ ...FORMAS_PAGAMENTO[0], label: 'Cartão Débito' }, registro.valorCartaoDebito, 'valorCartaoDebito')}
-                    {renderInputField({ ...FORMAS_PAGAMENTO[0], label: 'Cartão Crédito' }, registro.valorCartaoCredito, 'valorCartaoCredito')}
+                    <View className="flex-row flex-wrap -mx-2">
+                        {/* Cartão Débito */}
+                        <View className="w-1/2 px-2 mb-4">
+                            <View className="bg-white rounded-3xl p-4 border-2 border-blue-50 shadow-sm">
+                                <View className="flex-row items-center gap-2 mb-2">
+                                    <View className="p-1.5 bg-blue-100 rounded-lg">
+                                        <CreditCard size={16} color="#2563eb" />
+                                    </View>
+                                    <Text className="text-[10px] font-black text-blue-600 uppercase">Débito</Text>
+                                </View>
+                                <View className="flex-row items-center border-b border-gray-100 pb-1">
+                                    <Text className="text-gray-400 font-bold mr-1">R$</Text>
+                                    <TextInput
+                                        className="flex-1 text-lg font-black text-gray-800 p-0"
+                                        placeholder="0,00"
+                                        value={registro.valorCartaoDebito}
+                                        onChangeText={(v) => handleChange('valorCartaoDebito', v)}
+                                        keyboardType="decimal-pad"
+                                    />
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Cartão Crédito */}
+                        <View className="w-1/2 px-2 mb-4">
+                            <View className="bg-white rounded-3xl p-4 border-2 border-indigo-50 shadow-sm">
+                                <View className="flex-row items-center gap-2 mb-2">
+                                    <View className="p-1.5 bg-indigo-100 rounded-lg">
+                                        <CreditCard size={16} color="#4f46e5" />
+                                    </View>
+                                    <Text className="text-[10px] font-black text-indigo-600 uppercase">Crédito</Text>
+                                </View>
+                                <View className="flex-row items-center border-b border-gray-100 pb-1">
+                                    <Text className="text-gray-400 font-bold mr-1">R$</Text>
+                                    <TextInput
+                                        className="flex-1 text-lg font-black text-gray-800 p-0"
+                                        placeholder="0,00"
+                                        value={registro.valorCartaoCredito}
+                                        onChangeText={(v) => handleChange('valorCartaoCredito', v)}
+                                        keyboardType="decimal-pad"
+                                    />
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* PIX */}
+                        <View className="w-1/2 px-2 mb-4">
+                            <View className="bg-white rounded-3xl p-4 border-2 border-teal-50 shadow-sm">
+                                <View className="flex-row items-center gap-2 mb-2">
+                                    <View className="p-1.5 bg-teal-100 rounded-lg">
+                                        <Smartphone size={16} color="#0d9488" />
+                                    </View>
+                                    <Text className="text-[10px] font-black text-teal-600 uppercase">PIX</Text>
+                                </View>
+                                <View className="flex-row items-center border-b border-gray-100 pb-1">
+                                    <Text className="text-gray-400 font-bold mr-1">R$</Text>
+                                    <TextInput
+                                        className="flex-1 text-lg font-black text-gray-800 p-0"
+                                        placeholder="0,00"
+                                        value={registro.valorPix}
+                                        onChangeText={(v) => handleChange('valorPix', v)}
+                                        keyboardType="decimal-pad"
+                                    />
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Dinheiro */}
+                        <View className="w-1/2 px-2 mb-4">
+                            <View className="bg-white rounded-3xl p-4 border-2 border-emerald-50 shadow-sm">
+                                <View className="flex-row items-center gap-2 mb-2">
+                                    <View className="p-1.5 bg-emerald-100 rounded-lg">
+                                        <Banknote size={16} color="#059669" />
+                                    </View>
+                                    <Text className="text-[10px] font-black text-emerald-600 uppercase">Dinheiro</Text>
+                                </View>
+                                <View className="flex-row items-center border-b border-gray-100 pb-1">
+                                    <Text className="text-gray-400 font-bold mr-1">R$</Text>
+                                    <TextInput
+                                        className="flex-1 text-lg font-black text-gray-800 p-0"
+                                        placeholder="0,00"
+                                        value={registro.valorDinheiro}
+                                        onChangeText={(v) => handleChange('valorDinheiro', v)}
+                                        keyboardType="decimal-pad"
+                                    />
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Baratão (Full Width styled) */}
+                    <View className="mb-6">
+                        <View className="bg-rose-50 rounded-3xl p-5 border-2 border-rose-100 flex-row items-center justify-between">
+                            <View className="flex-row items-center gap-4">
+                                <View className="p-3 bg-rose-600 rounded-2xl shadow-md">
+                                    <CircleDollarSign size={24} color="white" />
+                                </View>
+                                <View>
+                                    <Text className="text-rose-700 font-black text-lg">Baratão</Text>
+                                    <Text className="text-rose-400 text-xs">Voucher promocional</Text>
+                                </View>
+                            </View>
+                            <View className="bg-white px-4 py-2 rounded-2xl border border-rose-200 flex-row items-center">
+                                <Text className="text-rose-300 font-bold mr-1">R$</Text>
+                                <TextInput
+                                    className="text-xl font-black text-rose-700 min-w-[80px] text-right"
+                                    placeholder="0,00"
+                                    placeholderTextColor="#fecaca"
+                                    value={registro.valorBaratao}
+                                    onChangeText={(v) => handleChange('valorBaratao', v)}
+                                    keyboardType="decimal-pad"
+                                />
+                            </View>
+                        </View>
+                    </View>
 
                     {/* Seção de Notas/Vales */}
                     <View className="mb-4">
-                        <View className="flex-row items-center justify-between mb-2">
-                            <View className="flex-row items-center gap-2">
-                                <Receipt size={20} color="#0891b2" />
-                                <Text className="font-bold text-gray-700">Notas / Vales</Text>
+                        <View className="flex-row items-center justify-between mb-3 px-1">
+                            <View>
+                                <Text className="text-lg font-black text-gray-800">📑 Notas / Vales</Text>
+                                <Text className="text-xs text-gray-400">Vendas faturadas a prazo</Text>
                             </View>
                             <TouchableOpacity
-                                className="bg-cyan-50 px-3 py-1.5 rounded-full flex-row items-center gap-1 border border-cyan-100"
+                                className="bg-cyan-600 px-4 py-2.5 rounded-2xl flex-row items-center gap-2 shadow-sm"
                                 onPress={() => setModalNotaVisible(true)}
                             >
-                                <Plus size={14} color="#0891b2" />
-                                <Text className="text-cyan-700 font-bold text-xs">Adicionar</Text>
+                                <Plus size={16} color="white" strokeWidth={3} />
+                                <Text className="text-white font-black text-sm uppercase">Adicionar</Text>
                             </TouchableOpacity>
                         </View>
 
                         {notasAdicionadas.length === 0 ? (
-                            <View className="bg-white rounded-2xl p-6 border-2 border-gray-50 border-dashed items-center justify-center">
-                                <Receipt size={32} color="#e5e7eb" style={{ marginBottom: 8 }} />
-                                <Text className="text-gray-400 text-sm italic text-center">Nenhuma nota adicionada para este turno</Text>
+                            <View className="bg-gray-100 rounded-[32px] p-10 border-2 border-gray-200 border-dashed items-center justify-center">
+                                <View className="w-16 h-16 bg-gray-200 rounded-full items-center justify-center mb-4">
+                                    <Receipt size={32} color="#9ca3af" />
+                                </View>
+                                <Text className="text-gray-400 text-sm font-bold text-center">Nenhuma nota pendente</Text>
+                                <Text className="text-gray-300 text-[10px] uppercase mt-1 tracking-tighter">Toque em adicionar para registrar</Text>
                             </View>
                         ) : (
-                            <View className="bg-white rounded-2xl border border-gray-100 overflow-hidden" style={{ elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3 }}>
+                            <View
+                                className="bg-white rounded-[32px] border-2 border-cyan-100 overflow-hidden shadow-sm"
+                                style={{ elevation: 3 }}
+                            >
                                 {notasAdicionadas.map((item, index) => (
-                                    <View key={index} className={`flex-row items-center justify-between p-4 ${index !== notasAdicionadas.length - 1 ? 'border-b border-gray-50' : ''}`}>
+                                    <View key={index} className={`flex-row items-center justify-between p-5 ${index !== notasAdicionadas.length - 1 ? 'border-b border-gray-50' : ''}`}>
                                         <View className="flex-1 pr-2">
-                                            <Text className="text-gray-800 font-bold" numberOfLines={1}>{item.cliente_nome}</Text>
+                                            <Text className="text-gray-800 font-black text-base" numberOfLines={1}>{item.cliente_nome}</Text>
+                                            <Text className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">Venda faturada</Text>
                                         </View>
                                         <View className="flex-row items-center gap-4">
-                                            <Text className="font-black text-cyan-700 text-base">{formatCurrency(item.valor_number)}</Text>
-                                            <TouchableOpacity onPress={() => handleRemoveNota(index)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                            <View className="bg-cyan-50 px-3 py-1.5 rounded-xl border border-cyan-100">
+                                                <Text className="font-black text-cyan-700 text-base">{formatCurrency(item.valor_number)}</Text>
+                                            </View>
+                                            <TouchableOpacity
+                                                onPress={() => handleRemoveNota(index)}
+                                                className="bg-red-50 p-2 rounded-xl border border-red-100"
+                                            >
                                                 <Trash2 size={18} color="#ef4444" />
                                             </TouchableOpacity>
                                         </View>
                                     </View>
                                 ))}
-                                <View className="bg-cyan-600 p-3 flex-row justify-between items-center">
-                                    <Text className="text-white font-bold text-xs uppercase tracking-wider">Total em Notas</Text>
-                                    <View className="bg-white/20 px-3 py-1 rounded-lg">
-                                        <Text className="text-white font-black text-base">{formatCurrency(totalNotas)}</Text>
-                                    </View>
+                                <View className="bg-cyan-600 p-5 flex-row justify-between items-center">
+                                    <Text className="text-white font-black text-sm uppercase tracking-widest">Total em Notas</Text>
+                                    <Text className="text-white font-black text-2xl">{formatCurrency(totalNotas)}</Text>
                                 </View>
                             </View>
                         )}
                     </View>
-
-                    {renderInputField(FORMAS_PAGAMENTO[2], registro.valorPix, 'valorPix')}
-                    {renderInputField(FORMAS_PAGAMENTO[3], registro.valorDinheiro, 'valorDinheiro')}
-                    {renderInputField({ id: 'baratao', label: 'Baratão', icon: CircleDollarSign, color: '#f59e0b', bgColor: '#fffbeb' }, registro.valorBaratao, 'valorBaratao')}
                 </View>
 
 
