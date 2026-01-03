@@ -540,9 +540,6 @@ export default function RegistroScreen() {
                                             <Text className={`font-bold ${item.id === turnoId ? 'text-primary-700' : 'text-gray-800'}`}>
                                                 {item.nome}
                                             </Text>
-                                            <Text className="text-gray-500 text-xs mt-1">
-                                                {item.horario_inicio} - {item.horario_fim}
-                                            </Text>
                                         </View>
                                         {item.id === turnoId && <Check size={20} color="#b91c1c" />}
                                     </TouchableOpacity>
