@@ -126,6 +126,7 @@ export interface SubmitClosingData {
     valor_nota: number;
     valor_pix: number;
     valor_dinheiro: number;
+    valor_moedas: number;
     valor_baratao: number;
     valor_encerrante: number;
     falta_caixa: number;
@@ -616,6 +617,7 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
             closingData.valor_nota +
             closingData.valor_pix +
             closingData.valor_dinheiro +
+            closingData.valor_moedas +
             closingData.valor_baratao;
 
         const postoId = frentista.posto_id;
