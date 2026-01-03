@@ -135,41 +135,6 @@ export interface SubmitClosingData {
     notas?: NotaFrentistaInput[];
 }
 
-export interface Combustivel {
-    id: number;
-    nome: string;
-    preco_venda: number;
-    codigo: string; // 'GC', 'GA', 'ET', 'S10', 'DIESEL'
-}
-
-export interface Bomba {
-    id: number;
-    nome: string;
-    posto_id: number;
-}
-
-export interface Bico {
-    id: number;
-    numero: number;
-    bomba_id: number;
-    combustivel_id: number;
-    encerrante_inicial?: number;
-    ativo: boolean;
-    Combustivel?: Combustivel;
-    Bomba?: Bomba;
-}
-
-export interface Leitura {
-    id: number;
-    bico_id: number;
-    fechamento_id: number;
-    leitura_inicial: number;
-    leitura_final: number;
-    afericao: number;
-    litros_vendidos: number;
-    valor_total: number;
-}
-
 // ============================================
 // SERVIÇOS
 // ============================================
@@ -451,69 +416,6 @@ export const fechamentoService = {
             throw new Error(`Erro ao atualizar fechamento: ${error.message}`);
         }
     },
-};
-
-export const bicoService = {
-    async getAllByPosto(postoId: number) {
-        const { data, error } = await supabase
-            .from('Bico')
-            .select(`
-                *,
-                Combustivel (*),
-                Bomba (*)
-            `)
-            .eq('ativo', true)
-            // Filter by Bomba's posto_id needs a join or client-side filter if Supabase doesn't support deep filter easily
-            // For now assuming we get all active bicos and filter parent in app or rely on RLS/Setup
-            // To be safe, filter by Bomba.posto_id
-            .eq('Bomba.posto_id', postoId)
-            .order('numero');
-
-        // Supabase join filtering syntax is tricky, let's try standard way or handle in app
-        // A better query:
-        const { data: bicos, error: err } = await supabase
-            .from('Bico')
-            .select(`
-                *,
-                Combustivel (*),
-                Bomba!inner (*)
-            `)
-            .eq('ativo', true)
-            .eq('Bomba.posto_id', postoId)
-            .order('numero');
-
-        if (err) throw err;
-        return bicos as Bico[];
-    }
-};
-
-export const leituraService = {
-    async getLastLeitura(bicoId: number) {
-        const { data, error } = await supabase
-            .from('Leitura')
-            .select('leitura_final')
-            .eq('bico_id', bicoId)
-            .order('id', { ascending: false })
-            .limit(1)
-            .single();
-
-        if (error) {
-            // if no previous reading, return 0 or handle error
-            if (error.code === 'PGRST116') return { leitura_final: 0 };
-            throw error;
-        }
-        return data;
-    },
-
-    async getByFechamento(fechamentoId: number) {
-        const { data, error } = await supabase
-            .from('Leitura')
-            .select('*')
-            .eq('fechamento_id', fechamentoId);
-
-        if (error) throw error;
-        return data as Leitura[];
-    }
 };
 
 /**

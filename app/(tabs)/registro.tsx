@@ -2,7 +2,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityInd
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { submitMobileClosing, turnoService, frentistaService, clienteService, usuarioService, bicoService, leituraService, type SubmitClosingData, type Cliente, type Turno, type Frentista, type Bico, type Leitura, type Combustivel } from '../../lib/api';
+import { submitMobileClosing, turnoService, frentistaService, clienteService, usuarioService, type SubmitClosingData, type Cliente, type Turno, type Frentista } from '../../lib/api';
 import { usePosto } from '../../lib/PostoContext';
 import {
     CreditCard,
@@ -21,9 +21,7 @@ import {
     Plus,
     Trash2,
     X,
-    Search,
-    Fuel,     // New icon
-    Droplets  // New icon
+    Search
 } from 'lucide-react-native';
 
 // Tipos
@@ -93,13 +91,6 @@ export default function RegistroScreen() {
     const [valorNotaTemp, setValorNotaTemp] = useState('');
     const [buscaCliente, setBuscaCliente] = useState(''); // Novo estado para busca
 
-    // --- LEITURA DE BICOS STATES ---
-    const [bicos, setBicos] = useState<Bico[]>([]);
-    const [leiturasIniciais, setLeiturasIniciais] = useState<Record<number, number>>({});
-    const [leiturasFinais, setLeiturasFinais] = useState<Record<number, string>>({}); // Input as string
-    const [calculatingEncerrante, setCalculatingEncerrante] = useState(false);
-    // -------------------------------
-
     // Formatação de Moeda
     const formatCurrency = (value: number): string => {
         return value.toLocaleString('pt-BR', {
@@ -132,50 +123,6 @@ export default function RegistroScreen() {
         }
         const formatted = formatCurrencyInput(value);
         setRegistro(prev => ({ ...prev, [field]: formatted }));
-    };
-
-    // Auto-calculate Encerrante whenever readings change
-    useEffect(() => {
-        if (bicos.length === 0) return;
-
-        let totalVenda = 0;
-        let hasReadings = false;
-
-        bicos.forEach(b => {
-            const finalStr = leiturasFinais[b.id];
-            if (!finalStr) return;
-
-            // finalStr is formatted "1.234,56" or just numbers? 
-            // Ideally readings are entered as whole numbers or with decimals. 
-            // Usually pump readings are 2 decimals.
-            // Let's assume input text matches "123456" -> 1234.56 or raw text
-            // We should standardise input. Let's assume raw number input for simplicity or reuse formatCurrencyInput logic?
-            // Readings are often Meters. e.g. 10450.50
-            const finalVal = parseFloat(finalStr.replace(/\./g, '').replace(',', '.')); // Standard BR to number
-            const initVal = leiturasIniciais[b.id] || 0;
-
-            if (!isNaN(finalVal) && finalVal >= initVal) {
-                const litros = finalVal - initVal;
-                const preco = b.Combustivel?.preco_venda || 0;
-                totalVenda += litros * preco;
-                hasReadings = true;
-            }
-        });
-
-        if (hasReadings) {
-            // Update valorEncerrante
-            const formatted = totalVenda.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            setRegistro(prev => ({ ...prev, valorEncerrante: formatted }));
-        }
-    }, [leiturasFinais, bicos, leiturasIniciais]);
-
-
-    // Handlers for Leitura Changes
-    const handleLeituraChange = (bicoId: number, text: string) => {
-        // Allow only numbers and comma/dot
-        // Standardise to BR format? Or just keep raw and format later?
-        // Let's use simple text for now
-        setLeiturasFinais(prev => ({ ...prev, [bicoId]: text }));
     };
 
     // Cálculos
@@ -219,30 +166,17 @@ export default function RegistroScreen() {
                     }
                 }
 
-                // 2. Turnos, Clientes e Frentistas e Bicos em paralelo
-                const [turnosData, clientesData, turnoAuto, frentistasData, bicosData] = await Promise.all([
+                // 2. Turnos, Clientes e Frentistas em paralelo
+                const [turnosData, clientesData, turnoAuto, frentistasData] = await Promise.all([
                     turnoService.getAll(postoAtivoId),
                     clienteService.getAll(postoAtivoId),
                     turnoService.getCurrentTurno(postoAtivoId),
-                    frentistaService.getAllByPosto(postoAtivoId),
-                    bicoService.getAllByPosto(postoAtivoId)
+                    frentistaService.getAllByPosto(postoAtivoId)
                 ]);
 
                 setTurnos(turnosData);
                 setClientes(clientesData);
                 setFrentistas(frentistasData);
-                setBicos(bicosData);
-
-                // Fetch Initial Readings for Bicos
-                const initReadings: Record<number, number> = {};
-                await Promise.all(bicosData.map(async (b) => {
-                    // Try to finding last reading
-                    // TODO: logic to find the closing reading of the PREVIOUS shift.
-                    // For now, getting the absolute last reading from DB.
-                    const last = await leituraService.getLastLeitura(b.id);
-                    initReadings[b.id] = last?.leitura_final || 0;
-                }));
-                setLeiturasIniciais(initReadings);
 
                 // Verificar Caixa Aberto
                 let caixaAbertoData = null;
@@ -598,105 +532,6 @@ export default function RegistroScreen() {
                         </View>
                     </View>
                 </Modal>
-
-                {/* Seção Leitura de Bicos */}
-                <View className="px-4 mt-6">
-                    <Text className="text-lg font-bold text-gray-800 mb-1">⛽ Leitura de Bombas</Text>
-                    <Text className="text-sm text-gray-500 mb-4">Informe o fechamento de cada bico</Text>
-
-                    {bicos.length === 0 ? (
-                        <View className="bg-yellow-50 p-4 rounded-xl border border-yellow-100 items-center">
-                            <Text className="text-yellow-700">Nenhum bico encontrado para este posto</Text>
-                        </View>
-                    ) : (
-                        bicos.map(bico => (
-                            <View key={bico.id} className="bg-white p-4 rounded-xl border border-gray-100 mb-3 flex-row justify-between items-center shadow-sm">
-                                <View className="flex-1">
-                                    <View className="flex-row items-center gap-2 mb-1">
-                                        <View className={`w-3 h-3 rounded-full ${bico.Combustivel?.codigo === 'GC' ? 'bg-yellow-400' : bico.Combustivel?.codigo === 'ET' ? 'bg-green-400' : bico.Combustivel?.codigo === 'S10' ? 'bg-red-400' : 'bg-blue-400'}`} />
-                                        <Text className="font-bold text-gray-700">{bico.Combustivel?.nome || 'Combustível'} #{bico.numero}</Text>
-                                    </View>
-                                    <Text className="text-xs text-gray-400">Total Inicial: {leiturasIniciais[bico.id] ? leiturasIniciais[bico.id].toFixed(2) : '0.00'}</Text>
-                                </View>
-                                <View className="w-32 bg-gray-50 rounded-lg px-3 py-1 border border-gray-200">
-                                    <TextInput
-                                        className="text-right font-bold text-gray-800 text-base"
-                                        keyboardType="decimal-pad"
-                                        placeholder="0000.00"
-                                        value={leiturasFinais[bico.id] || ''}
-                                        onChangeText={(t) => handleLeituraChange(bico.id, t)}
-                                    />
-                                </View>
-                            </View>
-                        ))
-                    )}
-                </View>
-
-                {/* Resumo por Combustível Table */}
-                {Object.keys(leiturasFinais).length > 0 && (
-                    <View className="px-4 mt-2 mb-2">
-                        <View className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-                            <Text className="font-bold text-gray-700 mb-3 text-base">Resumo por Combustível</Text>
-                            {/* Headers */}
-                            <View className="flex-row justify-between mb-2 border-b border-gray-100 pb-2">
-                                <Text className="text-xs font-bold text-gray-400 flex-1">COMBUSTÍVEL</Text>
-                                <Text className="text-xs font-bold text-gray-400 w-20 text-right">LITROS (L)</Text>
-                                <Text className="text-xs font-bold text-gray-400 w-24 text-right">VALOR R$</Text>
-                                <Text className="text-xs font-bold text-gray-400 w-12 text-right">%</Text>
-                            </View>
-                            {/* Rows */}
-                            {(() => {
-                                // Calculation Logic Inline
-                                const summary = bicos.reduce((acc, b) => {
-                                    const finalStr = leiturasFinais[b.id];
-                                    const finalVal = finalStr ? parseFloat(finalStr.replace(/\./g, '').replace(',', '.')) : 0;
-                                    const initVal = leiturasIniciais[b.id] || 0;
-                                    const litros = (finalVal > initVal) ? finalVal - initVal : 0;
-                                    const nome = b.Combustivel?.nome || 'Outros';
-                                    const preco = b.Combustivel?.preco_venda || 0;
-                                    const codigo = b.Combustivel?.codigo || '';
-
-                                    if (!acc[nome]) acc[nome] = { litros: 0, valor: 0, codigo };
-                                    acc[nome].litros += litros;
-                                    acc[nome].valor += litros * preco;
-                                    return acc;
-                                }, {} as Record<string, { litros: number, valor: number, codigo: string }>);
-
-                                const totalVal = Object.values(summary).reduce((a, b) => a + b.valor, 0);
-                                const totalLitros = Object.values(summary).reduce((a, b) => a + b.litros, 0);
-
-                                return (
-                                    <>
-                                        {Object.entries(summary).map(([name, data]) => {
-                                            const pct = totalVal > 0 ? (data.valor / totalVal) * 100 : 0;
-                                            const bgColor = data.codigo === 'GC' ? 'bg-yellow-50 text-yellow-800' :
-                                                data.codigo === 'ET' ? 'bg-green-50 text-green-800' :
-                                                    data.codigo === 'S10' ? 'bg-red-50 text-red-800' : 'bg-gray-50 text-gray-800';
-
-                                            return (
-                                                <View key={name} className="flex-row justify-between py-2 border-b border-gray-50 items-center">
-                                                    <View className={`px-2 py-0.5 rounded ${bgColor.split(' ')[0]} flex-1 mr-2`}>
-                                                        <Text className={`text-xs font-bold ${bgColor.split(' ')[1]}`}>{name}</Text>
-                                                    </View>
-                                                    <Text className="text-xs font-bold text-blue-900 w-20 text-right">{data.litros.toFixed(3)} L</Text>
-                                                    <Text className="text-xs font-bold text-blue-900 w-24 text-right">R$ {data.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
-                                                    <Text className="text-xs font-bold text-blue-900 w-12 text-right">{pct.toFixed(1)}%</Text>
-                                                </View>
-                                            )
-                                        })}
-                                        {/* Footer Total */}
-                                        <View className="flex-row justify-between pt-3 mt-1 bg-gray-100/50 p-2 rounded-lg">
-                                            <Text className="text-xs font-black text-gray-700 flex-1">TOTAL</Text>
-                                            <Text className="text-xs font-black text-blue-900 w-20 text-right">{totalLitros.toFixed(3)} L</Text>
-                                            <Text className="text-xs font-black text-green-600 w-24 text-right">R$ {totalVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
-                                            <Text className="text-xs font-black text-gray-800 w-12 text-right">100%</Text>
-                                        </View>
-                                    </>
-                                );
-                            })()}
-                        </View>
-                    </View>
-                )}
 
                 {/* Seção do Encerrante (MOVIDO PARA O TOPO) */}
                 <View className="px-4 mt-6">
