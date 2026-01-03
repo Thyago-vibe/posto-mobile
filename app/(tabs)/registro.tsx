@@ -75,6 +75,7 @@ export default function RegistroScreen() {
     const [frentistaId, setFrentistaId] = useState<number | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [modalFrentistaVisible, setModalFrentistaVisible] = useState(false);
+    const [frentistasQueFecharam, setFrentistasQueFecharam] = useState<number[]>([]);
 
     const [registro, setRegistro] = useState<RegistroTurno>({
         valorEncerrante: '',
@@ -156,6 +157,36 @@ export default function RegistroScreen() {
 
     // Carregar dados (User, Turnos, Clientes)
     useEffect(() => {
+        async function loadFrentistasQueFecharam(turnoIdParam: number) {
+            if (!postoAtivoId || !turnoIdParam) return;
+
+            try {
+                const hoje = new Date().toISOString().split('T')[0];
+
+                // Buscar fechamentos do turno atual
+                const { data, error } = await supabase
+                    .from('FechamentoFrentista')
+                    .select(`
+                        frentista_id,
+                        fechamento_id,
+                        Fechamento!inner(data, turno_id)
+                    `)
+                    .eq('Fechamento.data', hoje)
+                    .eq('Fechamento.turno_id', turnoIdParam)
+                    .eq('posto_id', postoAtivoId);
+
+                if (error) {
+                    console.error('Erro ao buscar fechamentos:', error);
+                    return;
+                }
+
+                const frentistaIds = data?.map(f => f.frentista_id) || [];
+                setFrentistasQueFecharam(frentistaIds);
+            } catch (error) {
+                console.error('Erro ao carregar frentistas que fecharam:', error);
+            }
+        }
+
         async function loadAllData() {
             if (!postoAtivoId) return;
 
@@ -199,6 +230,8 @@ export default function RegistroScreen() {
 
                 // Verificar Caixa Aberto
                 let caixaAbertoData = null;
+                let turnoIdFinal = null;
+
                 if (userRole !== 'ADMIN' && currentFrentistaId) {
                     const { data } = await supabase.rpc('verificar_caixa_aberto', {
                         p_frentista_id: currentFrentistaId
@@ -209,14 +242,22 @@ export default function RegistroScreen() {
                 if (caixaAbertoData && caixaAbertoData.aberto) {
                     setTurnoAtual(caixaAbertoData.turno);
                     setTurnoId(caixaAbertoData.turno_id);
+                    turnoIdFinal = caixaAbertoData.turno_id;
                 } else if (turnoAuto) {
                     setTurnoAtual(turnoAuto.nome);
                     setTurnoId(turnoAuto.id);
+                    turnoIdFinal = turnoAuto.id;
                 } else if (turnosData.length > 0) {
                     setTurnoAtual(turnosData[0].nome);
                     setTurnoId(turnosData[0].id);
+                    turnoIdFinal = turnosData[0].id;
                 } else {
                     setTurnoAtual('Selecione');
+                }
+
+                // Carregar frentistas que já fecharam
+                if (turnoIdFinal) {
+                    await loadFrentistasQueFecharam(turnoIdFinal);
                 }
             } catch (error) {
                 console.error('Erro ao carregar dados:', error);
@@ -227,10 +268,13 @@ export default function RegistroScreen() {
 
         loadAllData();
 
-        // Realtime para Turnos
+        // Realtime para Turnos e Fechamentos
         const subscription = supabase
             .channel('turnos_changes')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'Turno' }, () => loadAllData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'FechamentoFrentista' }, () => {
+                if (turnoId) loadFrentistasQueFecharam(turnoId);
+            })
             .subscribe();
 
         return () => { subscription.unsubscribe(); };
@@ -542,6 +586,7 @@ export default function RegistroScreen() {
                                 contentContainerStyle={{ paddingVertical: 8 }}
                                 renderItem={({ item }) => {
                                     const isSelected = item.id === frentistaId;
+                                    const jaFechou = frentistasQueFecharam.includes(item.id);
                                     const inicial = item.nome.charAt(0).toUpperCase();
                                     return (
                                         <TouchableOpacity
@@ -568,11 +613,18 @@ export default function RegistroScreen() {
                                                     <Text className={`text-base font-bold ${isSelected ? 'text-primary-700' : 'text-gray-800'}`}>
                                                         {item.nome}
                                                     </Text>
-                                                    <Text className="text-gray-400 text-xs">Toque para selecionar</Text>
+                                                    <Text className="text-gray-400 text-xs">
+                                                        {jaFechou ? 'Já fechou o turno' : 'Toque para selecionar'}
+                                                    </Text>
                                                 </View>
                                             </View>
                                             {isSelected && (
                                                 <View className="bg-primary-700 w-7 h-7 rounded-full items-center justify-center">
+                                                    <Check size={16} color="white" strokeWidth={3} />
+                                                </View>
+                                            )}
+                                            {!isSelected && jaFechou && (
+                                                <View className="bg-green-500 w-7 h-7 rounded-full items-center justify-center">
                                                     <Check size={16} color="white" strokeWidth={3} />
                                                 </View>
                                             )}
