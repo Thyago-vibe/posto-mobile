@@ -24,13 +24,31 @@ export const PostoProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const { data: { session } } = await supabase.auth.getSession();
 
             if (!session?.user) {
-                setPostoAtivo(null);
-                setPostoAtivoId(null);
+                // MODO UNIVERSAL: Se não tem login, usamos o posto padrão (ID 1 ou primeiro encontrado)
+                console.log('[PostoContext] Sem usuário logado - Carregando posto padrão no Modo Universal');
+
+                // Tenta pegar o posto ID 1 (padrão) ou o primeiro ativo
+                const { data: posto, error: postoError } = await supabase
+                    .from('Posto')
+                    .select('*')
+                    .eq('ativo', true)
+                    .limit(1)
+                    .single();
+
+                if (postoError || !posto) {
+                    setError('Nenhum posto ativo encontrado para o modo universal.');
+                    setPostoAtivo(null);
+                    setPostoAtivoId(null);
+                } else {
+                    setPostoAtivo(posto);
+                    setPostoAtivoId(posto.id);
+                }
+
                 setLoading(false);
                 return;
             }
 
-            // Buscar frentista para obter o posto_id
+            // Buscar frentista para obter o posto_id (Caminho Logado Legacy)
             const frentista = await frentistaService.getByUserId(session.user.id);
 
             if (frentista && frentista.posto_id) {
@@ -46,7 +64,21 @@ export const PostoProvider: React.FC<{ children: ReactNode }> = ({ children }) =
                 if (postoError) throw postoError;
                 setPostoAtivo(posto);
             } else {
-                setError('Frentista não vinculado a um posto ativo.');
+                // Se está logado mas sem frentista, tenta fallback para posto padrão também
+                // para evitar tela branca/erro
+                const { data: postoDefault } = await supabase
+                    .from('Posto')
+                    .select('*')
+                    .eq('ativo', true)
+                    .limit(1)
+                    .single();
+
+                if (postoDefault) {
+                    setPostoAtivo(postoDefault);
+                    setPostoAtivoId(postoDefault.id);
+                } else {
+                    setError('Frentista não vinculado a um posto ativo.');
+                }
             }
         } catch (err: any) {
             console.error('Erro ao carregar dados do posto:', err);

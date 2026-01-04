@@ -18,86 +18,29 @@ export default function TabsLayout() {
 
     async function checkFrentistaStatus() {
         try {
-            // Timeout de segurança de 5 segundos
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Timeout verificando status')), 5000)
-            );
-
-            const checkPromise = (async () => {
-                const { data: { user } } = await supabase.auth.getUser();
-                if (!user) {
-                    router.replace('/');
-                    return;
-                }
-
-                // Check if user is admin (admins can access without frentista record)
+            // Em Modo Universal, não bloqueamos se não houver usuário logado
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+                // Se tiver usuário (admin ou legacy), verifica role
                 const userProfile = await usuarioService.getByEmail(user.email!);
                 if (userProfile?.role === 'ADMIN') {
                     setIsAdmin(true);
-                    return;
                 }
-
-                // Check if frentista exists and is active
-                let frentista = await frentistaService.getByUserId(user.id);
-
-                // Self-healing: Se não existir frentista mas o usuário está logado, criar automaticamente
-                if (!frentista && user.email) {
-                    console.log('Frentista não encontrado, tentando auto-criação para:', user.email);
-                    const metadata = user.user_metadata;
-                    const { data: newFrentista, error: createError } = await supabase
-                        .from('Frentista')
-                        .insert({
-                            nome: metadata.nome || user.email.split('@')[0],
-                            cpf: metadata.cpf || null,
-                            telefone: metadata.telefone || null,
-                            posto_id: metadata.posto_id || 1, // Fallback para posto 1 se não houver no metadado
-                            user_id: user.id,
-                            ativo: true,
-                            data_admissao: new Date().toISOString().split('T')[0]
-                        })
-                        .select()
-                        .single();
-
-                    if (!createError && newFrentista) {
-                        frentista = newFrentista;
-                    }
+                
+                // Tenta carregar frentista vinculado apenas para status visual
+                // Não bloqueamos mais a navegação baseada nisso
+                const frentista = await frentistaService.getByUserId(user.id);
+                if (frentista) {
+                    // Lógica opcional de auto-abertura de caixa mantida apenas se logado
                 }
+            }
+            
+            // Libera o loading imediatamente
+            setChecking(false);
 
-                if (!frentista) {
-                    setAccountBlocked(true);
-                    return;
-                }
-
-                // Verificar se tem caixa aberto hoje
-                const { data: statusCaixa, error: rpcError } = await supabase.rpc('verificar_caixa_aberto', {
-                    p_frentista_id: frentista.id
-                });
-
-                if (!rpcError && statusCaixa && !statusCaixa.aberto) {
-                    // Tentativa de abertura automática para agilizar a entrada
-                    const turnoAuto = await turnoService.getCurrentTurno(frentista.posto_id);
-                    if (turnoAuto) {
-                        const { error: openError } = await supabase.rpc('abrir_caixa', {
-                            p_turno_id: turnoAuto.id,
-                            p_posto_id: frentista.posto_id,
-                            p_frentista_id: frentista.id
-                        });
-
-                        if (!openError) {
-                            setChecking(false);
-                            return;
-                        }
-                    }
-
-                    // Se falhar a abertura automática, cai na tela manual
-                    router.replace('/abertura-caixa');
-                    return;
-                }
-            })();
-
-            await Promise.race([checkPromise, timeoutPromise]);
         } catch (error) {
-            console.error('Error checking frentista status:', error);
+            console.error('Error checking status:', error);
             setChecking(false);
         } finally {
             setChecking(false);
