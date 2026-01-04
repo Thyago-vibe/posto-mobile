@@ -35,10 +35,11 @@ export default function RootLayout() {
         };
     }, []);
 
-    // Registrar push token quando o usuário está logado (nas tabs)
+    // Registrar push token (opcional no modo sem login)
     useEffect(() => {
         async function initializePushNotifications() {
-            // Só registra quando está nas tabs (logado)
+            // No modo sem login, poderíamos registrar o token sem sessão se quisermos enviar por dispositivo
+            // Por enquanto, apenas evitamos erros se não houver sessão
             if (pathname.includes('(tabs)')) {
                 const { data: { session } } = await supabase.auth.getSession();
                 if (session) {

@@ -114,23 +114,10 @@ export default function PerfilScreen() {
     async function loadData() {
         setLoading(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user?.email) {
-                setUserEmail(user.email);
-                const name = user.email.split('@')[0];
-                setUserName(name.charAt(0).toUpperCase() + name.slice(1));
-
-                const frentista = await frentistaService.getByUserId(user.id);
-                if (frentista) {
-                    const upcomingFolgas = await escalaService.getMyUpcomingFolgas(frentista.id);
-                    setFolgas(upcomingFolgas);
-
-                    // Buscar o nome do posto (mock por enquanto baseado no posto_id)
-                    if (frentista.posto_id === 1) setPostoNome('Posto Providência');
-                    else if (frentista.posto_id === 2) setPostoNome('Posto Jorro');
-                    else if (frentista.posto_id === 3) setPostoNome('Posto Sertão');
-                }
-            }
+            // No modo sem login, poderíamos buscar o frentista selecionado localmente ou de outra forma
+            // Por enquanto, mostra frentista genérico
+            setUserName('Frentista');
+            setUserEmail('Acesso Livre');
         } catch (error) {
             console.error(error);
         } finally {
@@ -139,22 +126,7 @@ export default function PerfilScreen() {
     }
 
     const handleLogout = () => {
-        Alert.alert(
-            'Sair',
-            'Deseja realmente sair da sua conta?',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Sair',
-                    style: 'destructive',
-                    onPress: async () => {
-                        setLoading(true);
-                        await supabase.auth.signOut();
-                        router.replace('/');
-                    }
-                }
-            ]
-        );
+        Alert.alert('Modo Livre', 'O login não é mais necessário neste aplicativo.');
     };
 
     const MenuItem = ({
@@ -416,16 +388,11 @@ export default function PerfilScreen() {
                 </View>
             </View>
 
-            {/* Botão Sair */}
-            <View className="px-4 mt-8">
-                <TouchableOpacity
-                    className="bg-white rounded-2xl p-4 flex-row items-center justify-center gap-3 border border-red-200"
-                    onPress={handleLogout}
-                    activeOpacity={0.7}
-                >
-                    <LogOut size={20} color="#dc2626" />
-                    <Text className="text-red-600 font-bold text-base">Sair da Conta</Text>
-                </TouchableOpacity>
+            {/* Informação do App */}
+            <View className="px-4 mt-8 opacity-50">
+                <View className="bg-gray-100 rounded-2xl p-4 items-center">
+                    <Text className="text-gray-500 font-medium">Modo de Acesso Livre Ativado</Text>
+                </View>
             </View>
 
             {/* Versão */}
