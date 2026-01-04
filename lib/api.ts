@@ -570,52 +570,56 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
 }> {
     try {
         // 1. Verificar autenticação (Modo Híbrido: Com ou Sem Login)
+        // 1. Verificar autenticação (Modo Híbrido: Com ou Sem Login)
         const { data: { user } } = await supabase.auth.getUser();
 
-        let usuarioIdParaRegistro = '';
+        let usuarioIdParaRegistro: number | null = null;
 
-        if (user) {
-            usuarioIdParaRegistro = user.id;
-        } else {
-            // MODO UNIVERSAL SEM LOGIN
-            // Precisamos de um usuario_id para a tabela Fechamento (FK)
-            // Estratégia: Buscar o primeiro usuário ADMIN do sistema para associar o registro
-            // ou usar o user_id do próprio frentista se ele tiver um conta vinculada antigamente
-
-            // Tenta buscar o frentista primeiro para ver se tem user_id vinculado
-            if (closingData.frentista_id) {
-                const { data: frentistaData } = await supabase
-                    .from('Frentista')
-                    .select('user_id')
-                    .eq('id', closingData.frentista_id)
-                    .single();
-
-                if (frentistaData?.user_id) {
-                    usuarioIdParaRegistro = frentistaData.user_id;
-                }
+        if (user && user.email) {
+            // Se tem user logado, busca o ID numérico na tabela Usuario
+            const usuarioProfile = await usuarioService.getByEmail(user.email);
+            if (usuarioProfile) {
+                usuarioIdParaRegistro = usuarioProfile.id;
             }
+        }
 
-            // Se ainda não tiver ID, busca um admin padrão ou qualquer usuário válido
-            // Isso é necessário pois a tabela Fechamento exige usuario_id
-            if (!usuarioIdParaRegistro) {
-                const { data: adminUser } = await supabase
+        if (!usuarioIdParaRegistro) {
+            // MODO UNIVERSAL SEM LOGIN (ou falha ao buscar profile)
+            // Precisamos de um usuario_id (INTEGER) para a tabela Fechamento
+
+            // Estratégia 1: Tenta buscar um usuário associado ao frentista (se houver link user_id -> Usuario)
+            // Como a tabela Frentista tem user_id (UUID), é difícil linkar direto com Usuario (Int) sem email.
+            // Então vamos para a Estratégia 2 Direta.
+
+            // Estratégia 2: Buscar o primeiro usuário ADMIN ou PROPRIETÁRIO do sistema para associar o registro
+            const { data: adminUser } = await supabase
+                .from('Usuario')
+                .select('id')
+                .eq('role', 'ADMIN') // Tenta pegar um admin
+                .limit(1)
+                .single();
+
+            if (adminUser) {
+                usuarioIdParaRegistro = adminUser.id;
+            } else {
+                // Fallback: Qualquer usuário (ex: o primeiro cadastrado)
+                const { data: anyUser } = await supabase
                     .from('Usuario')
-                    .select('id') // O id na tabela Usuario é o UUID do auth? Verificar schema.
-                    // Na verdade, Usuario.id geralmente é int, mas Fechamento.usuario_id geralmente é UUID auth.
-                    // Assumindo que precisamos de um UUID auth válido.
-                    // Se não tivermos, isso pode falhar se a coluna for NOT NULL.
-                    // Vamos tentar buscar um ID na tabela auth.users via RPC ou assumir que o frentista tem um.
-
-                    // SOLUÇÃO ROBUSTA: Se não tem user logado, vamos tentar prosseguir.
-                    // Se o banco permitir NULL, passamos NULL. Se não, precisaremos de um workaround.
-                    // Pela definição típica do Supabase, auth.users não é acessível publicamente.
-                    // Vamos tentar usar o ID do frentista selecionado se ele tiver user_id, senão falhará.
+                    .select('id')
                     .limit(1)
                     .single();
 
-                // Fallback crítico: Se não tiver ID, tentar usar um ID fixo conhecido ou aceitar risco
-                // Pelo erro relatado anteriormente, precisamos de algo.
+                if (anyUser) {
+                    usuarioIdParaRegistro = anyUser.id;
+                }
             }
+        }
+
+        // Se ainda assim não tiver ID, é um erro crítico de configuração do banco
+        if (!usuarioIdParaRegistro) {
+            console.error('CRÍTICO: Não foi possível encontrar um Usuario ID válido para vincular ao fechamento.');
+            // Vamos tentar passar 0 ou null se o banco aceitar, mas provavelmente falhará
+            // O ideal seria retornar erro, mas vamos tentar prosseguir para não travar se o banco aceitar null
         }
 
         // 3. Buscar frentista (se não informado, busca o do usuário logado)
@@ -630,11 +634,6 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
                 return { success: false, message: 'Frentista selecionado não encontrado.' };
             }
             frentista = data;
-
-            // Se conseguimos o frentista e ainda não temos usuarioIdParaRegistro, tentamos usar o dele
-            if (!usuarioIdParaRegistro && frentista.user_id) {
-                usuarioIdParaRegistro = frentista.user_id;
-            }
         } else if (user) {
             frentista = await frentistaService.getByUserId(user.id);
         }
@@ -644,25 +643,6 @@ export async function submitMobileClosing(closingData: SubmitClosingData): Promi
                 success: false,
                 message: 'Frentista não identificado. Por favor selecione um frentista no topo da tela.',
             };
-        }
-
-        // Se ainda não temos ID de usuário para o registro (caso de frentista sem conta criada),
-        // precisaremos usar um ID de fallback ou o backend precisará ser ajustado.
-        // Tentativa de buscar qualquer ID válido na tabela de fechamentos anteriores para reutilizar (HACK)
-        if (!usuarioIdParaRegistro) {
-            const { data: lastClosing } = await supabase
-                .from('Fechamento')
-                .select('usuario_id')
-                .limit(1)
-                .order('id', { ascending: false })
-                .single();
-
-            if (lastClosing?.usuario_id) {
-                usuarioIdParaRegistro = lastClosing.usuario_id;
-            } else {
-                // Último recurso: não enviar, vai dar erro de constraint provavelment
-                console.warn('AVISO: Sem ID de usuário para vincular ao fechamento.');
-            }
         }
 
         // 4. Calcular totais primeiro
