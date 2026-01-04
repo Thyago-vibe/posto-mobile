@@ -301,8 +301,26 @@ export default function RegistroScreen() {
         }
 
         if (!turnoId) {
-            Alert.alert('Erro', 'Não foi possível identificar o turno. Tente novamente mais tarde.');
-            return;
+            // Tentativa de recuperação de emergência
+            setLoading(true);
+            try {
+                const retryTurno = await turnoService.getCurrentTurno(postoAtivoId!);
+                if (retryTurno) {
+                    setTurnoId(retryTurno.id);
+                    // Prossiga se recuperou
+                } else {
+                    Alert.alert(
+                        'Erro de Configuração',
+                        `Não foi possível identificar o turno para o posto (ID: ${postoAtivoId}).\n\nVerifique se os turnos estão ativos no painel administrativo.`
+                    );
+                    setLoading(false);
+                    return;
+                }
+            } catch (e) {
+                Alert.alert('Erro Crítico', 'Falha na comunicação com o servidor ao buscar turnos.');
+                setLoading(false);
+                return;
+            }
         }
 
         // Montar mensagem de confirmação

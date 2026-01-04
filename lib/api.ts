@@ -285,28 +285,48 @@ export const turnoService = {
      * Identifica o turno atual baseado na hora
      */
     async getCurrentTurno(postoId?: number): Promise<Turno | null> {
+        console.log('[TurnoService] Identificando turno atual para posto:', postoId);
         const turnos = await this.getAll(postoId);
+
+        if (!turnos || turnos.length === 0) {
+            console.warn('[TurnoService] Nenhum turno encontrado para o posto:', postoId);
+            return null;
+        }
+
         const now = new Date();
         const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+        // Prioriza turnos ativos
+        const activeTurnos = turnos.filter(t => (t as any).ativo !== false);
+        const searchList = activeTurnos.length > 0 ? activeTurnos : turnos;
+
+        console.log(`[TurnoService] Buscando em ${searchList.length} turnos para hora ${currentTime}`);
+
         // Encontra o turno que contém a hora atual
-        for (const turno of turnos) {
+        for (const turno of searchList) {
             const start = turno.horario_inicio;
             const end = turno.horario_fim;
 
             // Caso especial: turno da noite que cruza meia-noite
             if (start > end) {
                 if (currentTime >= start || currentTime < end) {
+                    console.log('[TurnoService] Turno identificado (meia-noite):', turno.nome);
                     return turno;
                 }
             } else {
                 if (currentTime >= start && currentTime < end) {
+                    console.log('[TurnoService] Turno identificado:', turno.nome);
                     return turno;
                 }
             }
         }
 
-        return turnos[0] || null; // Fallback para primeiro turno
+        // Se não encontrou pela hora, tenta o turno 'Diário' ou o primeiro da lista
+        const diario = searchList.find(t => t.nome.toLowerCase() === 'diário');
+        const fallback = diario || searchList[0];
+
+        console.log('[TurnoService] Usando fallback:', fallback?.nome);
+        return fallback || null;
     },
 };
 
