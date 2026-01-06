@@ -560,15 +560,6 @@ export default function RegistroScreen() {
                         </TouchableOpacity>
                     </View>
                 </View>
-                {/* BANNER DE TESTE - Remover após confirmar EAS Update */}
-                <View className="mx-4 mt-3 p-4 bg-yellow-500 rounded-2xl border-2 border-yellow-600">
-                    <Text className="text-center text-yellow-900 font-black text-base">
-                        ⚡ UPDATE TESTE 05/JAN - 06h ⚡
-                    </Text>
-                    <Text className="text-center text-yellow-800 text-xs mt-1">
-                        Se você está vendo isso, o EAS Update funcionou!
-                    </Text>
-                </View>
 
                 {/* Modal de Seleção de Turno - REMOVIDO em v1.4.0
                  * Turno agora é determinado automaticamente pela hora do dia,
