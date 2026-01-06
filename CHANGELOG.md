@@ -7,6 +7,28 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ---
 
+## [1.6.0] - 2026-01-06
+
+### ✨ Adicionado
+- **Seleção de Data de Fechamento**: Agora é possível selecionar a data do fechamento ao invés de usar sempre a data atual.
+  - Card visual com exibição da data selecionada
+  - Botão "Alterar" para abrir o seletor de data
+  - DatePicker nativo para Android e iOS
+  - Formatação em português brasileiro (DD/MM/YYYY)
+  - Validação: não permite selecionar datas futuras
+  - Útil para fechar dias anteriores quando necessário
+  - Data selecionada é exibida na mensagem de confirmação antes do envio
+
+### 📦 Dependências
+- Adicionado `@react-native-community/datetimepicker@^8.5.1`
+
+### ⚠️ Nota Importante
+- **Requer novo build**: Esta versão adiciona uma dependência nativa, portanto não pode ser distribuída via OTA Update.
+- Necessário fazer novo build com `npx eas build --platform android --profile production`
+
+---
+
+
 ## [1.4.0] - 2026-01-04
 
 ### 🚀 Nova Arquitetura - Modo Plataforma Universal
