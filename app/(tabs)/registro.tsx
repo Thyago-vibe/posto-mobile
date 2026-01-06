@@ -1,6 +1,7 @@
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Modal, FlatList } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useState, useEffect } from 'react';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../../lib/supabase';
 import { submitMobileClosing, turnoService, frentistaService, clienteService, type SubmitClosingData, type Cliente, type Turno, type Frentista } from '../../lib/api';
 import { usePosto } from '../../lib/PostoContext';
@@ -23,7 +24,8 @@ import {
     X,
     Search,
     Coins,
-    Ban
+    Ban,
+    Calendar
 } from 'lucide-react-native';
 
 // Tipos
@@ -96,6 +98,11 @@ export default function RegistroScreen() {
     const [valorNotaTemp, setValorNotaTemp] = useState('');
     const [buscaCliente, setBuscaCliente] = useState(''); // Novo estado para busca
 
+    // Estados para Data de Fechamento
+    const [dataFechamento, setDataFechamento] = useState<Date>(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [modalDataVisible, setModalDataVisible] = useState(false);
+
     // Formatação de Moeda
     const formatCurrency = (value: number): string => {
         return value.toLocaleString('pt-BR', {
@@ -109,6 +116,36 @@ export default function RegistroScreen() {
         const cleanStr = value.replace(/[^\d,]/g, '').replace(',', '.');
         const parsed = parseFloat(cleanStr);
         return isNaN(parsed) ? 0 : parsed;
+    };
+
+    /**
+     * Formata a data para exibição no formato brasileiro (DD/MM/YYYY)
+     */
+    const formatDateDisplay = (date: Date): string => {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
+    /**
+     * Formata a data para envio ao banco (YYYY-MM-DD)
+     */
+    const formatDateForDB = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    /**
+     * Handler para mudança de data no DatePicker
+     */
+    const handleDateChange = (event: any, selectedDate?: Date) => {
+        setShowDatePicker(Platform.OS === 'ios'); // No iOS mantém aberto, no Android fecha
+        if (selectedDate) {
+            setDataFechamento(selectedDate);
+        }
     };
 
     // Função para limpar formulário ao trocar de frentista (Modo Dispositivo Compartilhado)
@@ -324,7 +361,7 @@ export default function RegistroScreen() {
         }
 
         // Montar mensagem de confirmação
-        let mensagemConfirmacao = `Encerrante: ${formatCurrency(valorEncerrante)}\nTotal Pagamentos: ${formatCurrency(totalInformado)}`;
+        let mensagemConfirmacao = `Data: ${formatDateDisplay(dataFechamento)}\nEncerrante: ${formatCurrency(valorEncerrante)}\nTotal Pagamentos: ${formatCurrency(totalInformado)}`;
 
         if (caixaBateu) {
             mensagemConfirmacao += '\n\n✅ Caixa bateu!';
@@ -344,9 +381,9 @@ export default function RegistroScreen() {
                     onPress: async () => {
                         setSubmitting(true);
                         try {
-                            // Preparar dados para envio
+                            // Preparar dados para envio - USANDO DATA SELECIONADA
                             const closingData: SubmitClosingData = {
-                                data: new Date().toISOString().split('T')[0],
+                                data: formatDateForDB(dataFechamento),
                                 turno_id: turnoId!,
                                 valor_cartao_debito: parseValue(registro.valorCartaoDebito),
                                 valor_cartao_credito: parseValue(registro.valorCartaoCredito),
@@ -490,6 +527,47 @@ export default function RegistroScreen() {
                             <Text className="text-gray-600 font-bold text-xs">Diário</Text>
                         </View>
                     </View>
+                </View>
+
+
+                {/* Card de Seleção de Data de Fechamento */}
+                <View
+                    className="mx-4 mt-3 p-4 bg-white rounded-2xl border border-gray-100"
+                    style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}
+                >
+                    <View className="flex-row items-center justify-between">
+                        <View className="flex-row items-center gap-3">
+                            <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center">
+                                <Calendar size={20} color="#2563eb" />
+                            </View>
+                            <View>
+                                <Text className="text-xs text-gray-500 font-medium uppercase tracking-wider">Data do Fechamento</Text>
+                                <Text className="text-base font-bold text-gray-800">{formatDateDisplay(dataFechamento)}</Text>
+                            </View>
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => {
+                                if (Platform.OS === 'android') {
+                                    setShowDatePicker(true);
+                                } else {
+                                    setModalDataVisible(true);
+                                }
+                            }}
+                            className="bg-blue-600 px-4 py-2 rounded-xl"
+                            activeOpacity={0.7}
+                        >
+                            <Text className="text-white font-bold text-sm">Alterar</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+                {/* BANNER DE TESTE - Remover após confirmar EAS Update */}
+                <View className="mx-4 mt-3 p-4 bg-yellow-500 rounded-2xl border-2 border-yellow-600">
+                    <Text className="text-center text-yellow-900 font-black text-base">
+                        ⚡ UPDATE TESTE 05/JAN - 06h ⚡
+                    </Text>
+                    <Text className="text-center text-yellow-800 text-xs mt-1">
+                        Se você está vendo isso, o EAS Update funcionou!
+                    </Text>
                 </View>
 
                 {/* Modal de Seleção de Turno - REMOVIDO em v1.4.0
@@ -1080,6 +1158,60 @@ export default function RegistroScreen() {
                             <Text className="text-white text-lg font-black">Adicionar Nota</Text>
                         </TouchableOpacity>
                         <View style={{ height: insets.bottom + 20 }} />
+                    </View>
+                </View>
+            </Modal>
+
+            {/* DatePicker para Android */}
+            {showDatePicker && Platform.OS === 'android' && (
+                <DateTimePicker
+                    value={dataFechamento}
+                    mode="date"
+                    display="default"
+                    onChange={handleDateChange}
+                    maximumDate={new Date()} // Não permite selecionar datas futuras
+                />
+            )}
+
+            {/* Modal com DatePicker para iOS */}
+            <Modal
+                visible={modalDataVisible && Platform.OS === 'ios'}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setModalDataVisible(false)}
+            >
+                <View className="flex-1 bg-black/60 justify-end">
+                    <TouchableOpacity
+                        className="absolute inset-0"
+                        onPress={() => setModalDataVisible(false)}
+                    />
+                    <View className="bg-white rounded-t-[32px] p-6 shadow-2xl">
+                        <View className="flex-row justify-between items-center mb-4">
+                            <Text className="text-2xl font-black text-gray-800">Selecionar Data</Text>
+                            <TouchableOpacity
+                                onPress={() => setModalDataVisible(false)}
+                                className="bg-gray-100 p-2 rounded-full"
+                            >
+                                <X size={20} color="#6b7280" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <DateTimePicker
+                            value={dataFechamento}
+                            mode="date"
+                            display="spinner"
+                            onChange={handleDateChange}
+                            maximumDate={new Date()}
+                            textColor="#000"
+                        />
+
+                        <TouchableOpacity
+                            onPress={() => setModalDataVisible(false)}
+                            className="mt-4 bg-blue-600 py-4 rounded-2xl"
+                        >
+                            <Text className="text-white font-bold text-center text-lg">Confirmar</Text>
+                        </TouchableOpacity>
+                        <View style={{ height: insets.bottom + 10 }} />
                     </View>
                 </View>
             </Modal>

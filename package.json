@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
+    "@react-native-community/datetimepicker": "^8.5.1",
     "@react-native-picker/picker": "2.11.1",
     "@supabase/supabase-js": "^2.87.1",
     "babel-preset-expo": "~54.0.9",
