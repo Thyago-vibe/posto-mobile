@@ -164,13 +164,42 @@ export default function RegistroScreen() {
     };
 
     const formatCurrencyInput = (value: string) => {
-        const onlyNumbers = value.replace(/\D/g, '');
-        if (onlyNumbers === '') return '';
-        const amount = parseInt(onlyNumbers) / 100;
-        return amount.toLocaleString('pt-BR', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2
-        });
+        if (!value) return '';
+
+        // Remove prefixo R$ e espaços para limpar
+        let cleaned = value.replace(/^R\$\s*/, '').trim();
+
+        // Padroniza separador decimal (aceita . ou ,)
+        cleaned = cleaned.replace('.', ',');
+
+        // Se estiver vazio
+        if (!cleaned) return '';
+
+        // Separa parte inteira e decimal
+        const parts = cleaned.split(',');
+
+        // Trata parte inteira
+        let inteiro = parts[0].replace(/\D/g, '');
+
+        // Remove zeros à esquerda a menos que seja apenas "0"
+        if (inteiro.length > 0) {
+            inteiro = String(Number(inteiro));
+        }
+
+        // Aplica formatação de milhar
+        if (inteiro.length > 3) {
+            inteiro = inteiro.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        // Se digitou vírgula, entra no modo decimal
+        if (cleaned.includes(',')) {
+            // Pega decimais (apenas números)
+            const decimal = parts.slice(1).join('').replace(/\D/g, '');
+            return `R$ ${inteiro},${decimal}`;
+        }
+
+        // Modo Inteiro (sem vírgula, sem ,00 automático pro enquanto para facilitar digitação)
+        return `R$ ${inteiro}`;
     };
 
     const handleChange = (field: keyof RegistroTurno, value: string) => {
